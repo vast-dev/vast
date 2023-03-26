@@ -30,44 +30,51 @@ export class Vast {
     await compiler.load();
 
     // Run project compiler schematic to bootstrap everything
-    try {
-      await mkdir(compiler.target);
-      process.chdir(compiler.target);
-    } catch (err) {
-      throw new Error(
-        `Could not create target directory ${compiler.target}. ${err}`
-      );
-    }
+    await this.initTargetDirectory(compiler.target);
+    await this.runProjectSchematic(compiler.project.name);
+    await compiler.compile();
+    await this.runAppSchematics(Object.keys(compiler.project.apps));
 
+    // Create pre-compiled AST JSON files where needed
+    // Save to disk as temp files (need to be added to .gitignore)
+  }
+
+  static async initTargetDirectory(target: string) {
+    try {
+      await mkdir(target);
+      process.chdir(target);
+    } catch (err) {
+      throw new Error(`Could not create target directory ${target}. ${err}`);
+    }
+  }
+
+  static async runProjectSchematic(name: string) {
     const schematicOpts: SchematicOption[] = [];
     schematicOpts.push(
-      new SchematicOption("name", compiler.project?.name ?? "vast-project"),
-      new SchematicOption("directory", '.')
+      new SchematicOption("name", name),
+      new SchematicOption("directory", ".")
     );
     await this.schematicService.execute(
       Collections.Schematics,
       "project",
       schematicOpts
     );
+  }
 
-    await compiler.compile();
+  static async runAppSchematics(names?: string[]) {
+    if (names) {
+      await Promise.all(
+        names.map(async (name) => {
+          const appOpts: SchematicOption[] = [];
+          appOpts.push(new SchematicOption("name", name));
 
-    if (compiler.project?.apps) {
-      await Promise.all(Object.keys(compiler.project?.apps).map(async (name) => {
-        const appOpts: SchematicOption[] = [];
-        appOpts.push(
-          new SchematicOption("name", name),
-        );
-        
-        await this.schematicService.execute(
-          Collections.Schematics,
-          "app",
-          appOpts
-        );
-      }));
+          await this.schematicService.execute(
+            Collections.Schematics,
+            "app",
+            appOpts
+          );
+        })
+      );
     }
-
-    // Create pre-compiled AST JSON files where needed
-    // Save to disk as temp files (need to be added to .gitignore)
   }
 }

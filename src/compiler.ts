@@ -17,7 +17,10 @@ export class Compiler {
   protected options: CompilerOptions;
   protected reader: Reader;
   protected loader: VastLoader;
-  public project: Project | undefined;
+  public project: Project = {
+    name: "vast-project",
+    apps: {},
+  };
   public source: string = "";
   public target: string = "";
 
@@ -42,24 +45,22 @@ export class Compiler {
   }
 
   async load() {
-    if (!this.project) {
-      this.project = await this.loader.load();
-    }
+    this.project = await this.loader.load();
   }
 
   async compile() {
     await this.load();
 
     const { project, target } = this;
-    if(!project) throw new Error('Project not loaded');
+    if (!project) throw new Error("Project not loaded");
 
     console.log("Writing to destination: " + join(target, VAST_COMPILER_DIR));
-    await mkdir(join(target, VAST_COMPILER_DIR, 'apps'), {
+    await mkdir(join(target, VAST_COMPILER_DIR, "apps"), {
       recursive: true,
     });
 
     await writeFile(
-      join(target, VAST_COMPILER_DIR, 'project.json'),
+      join(target, VAST_COMPILER_DIR, "project.json"),
       JSON.stringify({
         name: project.name,
       })
