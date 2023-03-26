@@ -1,17 +1,13 @@
-import { SchematicOption, SchematicService } from "./lib/schematics";
-import { FileSystemReader } from './lib/readers/file-system.reader';
-import { cwd } from "process";
-import { resolve } from "path";
-import { Project } from "./schemas";
-import { VastLoader } from './loader';
+import {
+  Collections,
+  SchematicOption,
+  SchematicService,
+} from "./lib/schematics";
+import { Compiler, CompilerOptions } from "./compiler";
+import { mkdir } from "fs/promises";
 
 export interface NewProjectOptions {
   name: string;
-}
-
-export interface CompilerOptions {
-  source: string;
-  target: string;
 }
 
 export class Vast {
@@ -22,30 +18,56 @@ export class Vast {
     schematicOpts.push(new SchematicOption("name", options.name));
 
     console.log("Running schematic");
-    await this.schematicService.execute("project", schematicOpts);
+    await this.schematicService.execute(
+      Collections.MetaSchematics,
+      "project",
+      schematicOpts
+    );
   }
 
-  static async compile(_options?: CompilerOptions) {
-    const options = {
-        ..._options,
-        source: _options?.source ?? cwd(),
-    };
+  static async compile(options?: CompilerOptions) {
+    const compiler = new Compiler(options);
+    await compiler.load();
 
-    // Load JSON files from source and combine into one
-    const reader = new FileSystemReader(options.source);
-    const loader = new VastLoader(reader);
+    // Run project compiler schematic to bootstrap everything
+    try {
+      await mkdir(compiler.target);
+      process.chdir(compiler.target);
+    } catch (err) {
+      throw new Error(
+        `Could not create target directory ${compiler.target}. ${err}`
+      );
+    }
 
-    const project = await loader.load();
-    console.debug(JSON.stringify(project, null, 2));
+    const schematicOpts: SchematicOption[] = [];
+    schematicOpts.push(
+      new SchematicOption("name", compiler.project?.name ?? "vast-project"),
+      new SchematicOption("directory", '.')
+    );
+    await this.schematicService.execute(
+      Collections.Schematics,
+      "project",
+      schematicOpts
+    );
 
+    await compiler.compile();
+
+    if (compiler.project?.apps) {
+      await Promise.all(Object.keys(compiler.project?.apps).map(async (name) => {
+        const appOpts: SchematicOption[] = [];
+        appOpts.push(
+          new SchematicOption("name", name),
+        );
+        
+        await this.schematicService.execute(
+          Collections.Schematics,
+          "app",
+          appOpts
+        );
+      }));
+    }
 
     // Create pre-compiled AST JSON files where needed
     // Save to disk as temp files (need to be added to .gitignore)
-
-    // Run project compiler schematic to bootstrap everything
-    const schematicOpts: SchematicOption[] = [];
-
-    schematicOpts.push(new SchematicOption("name", "test"));
-    // await this.schematicService.execute("project", schematicOpts);
   }
 }
