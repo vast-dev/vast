@@ -11,9 +11,7 @@ export interface Project {
 export interface App {
   name: string;
   description?: string;
-  schemas?: {
-    [key: string]: Schema;
-  };
+  schemas: Schema;
   tables?: {
     [key: string]: Table;
   };
@@ -23,37 +21,27 @@ export interface App {
   endpoints?: Endpoints;
 }
 export interface Schema extends JSONSchema7 {}
-export interface SchemaJSON {
-  schemas: {
-    [key: string]: Schema;
-  };
-}
+export interface SchemaJSON extends JSONSchema7 {}
 
 export interface Table extends JSONSchema7 {}
 export interface TableJSON {
-  tables: {
-    [key: string]: Table;
-  };
+  [key: string]: Table;
 }
 export interface FunctionJSON {
-  functions: {
-    [key: string]: Function;
-  };
+  [key: string]: Function;
 }
 export interface Function {
   arguments: {
     [key: string]: JSONSchema7Definition;
   };
-  returns: JSONSchema7Definition;
+  returns: Reference;
   start: Reference;
   steps: {
     [key: string]: Step<any>;
   };
 }
 
-export interface EndpointJSON {
-  endpoints: Endpoints;
-}
+export interface EndpointJSON extends Endpoints {}
 export interface Endpoints extends OpenAPIV3.Document<{
   steps: {
     [key: string]: Step<any>;
@@ -67,5 +55,5 @@ export interface Step<T> {
 }
 
 export interface Reference {
-  $ref: string | undefined;
+  $ref: string;
 }

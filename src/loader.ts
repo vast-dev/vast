@@ -37,9 +37,12 @@ export class VastLoader {
     let app = this.project.apps[name];
 
     const json = await this.reader.read(`apps/${name}/schemas.json`);
+    const schemaJson: SchemaJSON = JSON.parse(json) as SchemaJSON;
     this.project.apps[name] = {
       ...app,
-      ...JSON.parse(json) as SchemaJSON,
+      schemas: {
+        ...schemaJson
+      },
     };
   }
 
@@ -50,7 +53,7 @@ export class VastLoader {
     const json = await this.reader.read(`apps/${name}/tables.json`);
     this.project.apps[name] = {
       ...app,
-      ...JSON.parse(json) as TableJSON,
+      tables: JSON.parse(json) as TableJSON,
     };
   }
 
@@ -61,7 +64,7 @@ export class VastLoader {
     const json = await this.reader.read(`apps/${name}/functions.json`);
     this.project.apps[name] = {
       ...app,
-      ...JSON.parse(json) as FunctionJSON,
+      functions: JSON.parse(json) as FunctionJSON,
     };
   }
 
@@ -72,7 +75,7 @@ export class VastLoader {
     const json = await this.reader.read(`apps/${name}/endpoints.json`);
     this.project.apps[name] = {
       ...app,
-      ...JSON.parse(json) as EndpointJSON,
+      endpoints: JSON.parse(json) as EndpointJSON,
     };
   }
 }

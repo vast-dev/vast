@@ -5,14 +5,12 @@ import { basename, join } from "path";
 import { Project } from "./schemas";
 import { Reader, FileSystemReader } from "./lib/readers";
 import { VastLoader } from "./loader";
+import { DEFAULT_APPS_PATH, DEFAULT_COMPILER_PATH_NAME } from "./defaults";
 
 export interface CompilerOptions {
   source: string;
   target: string;
 }
-
-export const VAST_COMPILER_DIR = ".vast";
-
 export class Compiler {
   protected options: CompilerOptions;
   protected reader: Reader;
@@ -48,19 +46,32 @@ export class Compiler {
     this.project = await this.loader.load();
   }
 
+  getProjectDir(...path: string[]) {
+    return join(this.target, DEFAULT_COMPILER_PATH_NAME, ...path);
+  }
+
+  getAppDir(...path: string[]) {
+    return join(
+      this.target,
+      DEFAULT_COMPILER_PATH_NAME,
+      DEFAULT_APPS_PATH,
+      ...path
+    );
+  }
+
   async compile() {
     await this.load();
 
     const { project, target } = this;
     if (!project) throw new Error("Project not loaded");
 
-    console.log("Writing to destination: " + join(target, VAST_COMPILER_DIR));
-    await mkdir(join(target, VAST_COMPILER_DIR, "apps"), {
+    console.log("Writing to destination: " + this.getProjectDir());
+    await mkdir(this.getAppDir(), {
       recursive: true,
     });
 
     await writeFile(
-      join(target, VAST_COMPILER_DIR, "project.json"),
+      this.getProjectDir("project.json"),
       JSON.stringify({
         name: project.name,
       })
@@ -69,11 +80,22 @@ export class Compiler {
     await Promise.all(
       Object.keys(project.apps).map(async (name) => {
         const app = project.apps[name];
-        await writeFile(
-          join(target, VAST_COMPILER_DIR, `apps/${name}.json`),
-          JSON.stringify(app)
-        );
+        // await this.compileSchemas(name);
+        await mkdir(this.getAppDir(name), {
+          recursive: true,
+        });
+        await writeFile(this.getAppDir(name, "app.json"), JSON.stringify(app));
       })
+    );
+  }
+
+  async compileSchemas(app: string) {
+    const { project } = this;
+    const appObj = project.apps[app];
+
+    await writeFile(
+      this.getAppDir(app, "schemas.json"),
+      JSON.stringify(appObj.schemas)
     );
   }
 }
